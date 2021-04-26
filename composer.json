@@ -16,5 +16,12 @@
         "psr-4": {
             "Wdnmd\\": "src/Wdnmd/"
         }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Wdnmd\\WdnmdServiceProvider"
+            ]
+        }
     }
 }
