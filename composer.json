@@ -1,7 +1,6 @@
 {
     "name": "chenyansong/response-transformation",
     "description": "Conversion response of user defined model based on laravel",
-    "type": "library",
     "license": "MIT",
     "authors": [
         {
