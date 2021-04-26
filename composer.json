@@ -2,7 +2,7 @@
     "name": "chenyansong/response-transformation",
     "description": "Conversion response of user defined model based on laravel",
     "type": "library",
-    "license": "Apache",
+    "license": "Apache License 2.0",
     "authors": [
         {
             "name": "一个路过的假面骑士",
