@@ -22,17 +22,6 @@ abstract class Transform
     protected $modelTransForm = [];
 
     /**
-     * 时间格式
-     * @author yansong
-     * @param int $time
-     * @return string
-     */
-    public function timeToDataString(int $time) : string
-    {
-        return date('Y-m-d H:i:s', $time);
-    }
-
-    /**
      * 获取使用关联的声明
      * @author yansong
      * @return array
