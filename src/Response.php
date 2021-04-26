@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Request;
 class Response extends HttpResponse
 {
     /**
-     * 关联方法别名
+     * 关联方法别名s
      * @var string
      */
     protected $key = 'install';
