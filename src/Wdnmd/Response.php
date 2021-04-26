@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Wdnmd\src;
+namespace Wdnmd;
 
 use Illuminate\Http\Response as HttpResponse;
 use Exception;

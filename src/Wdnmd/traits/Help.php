@@ -1,6 +1,6 @@
 <?php
 
-namespace Wdnmd\src\traits;
+namespace Wdnmd\traits;
 
 use Wdnmd\src\Response;
 use Exception;
