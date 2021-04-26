@@ -1,23 +1,25 @@
 <?php
 
 declare(strict_types = 1);
-
 namespace Wdnmd;
 
 use Exception;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * 转换成基类
  * Class Transform
  * @package Wdnmd\src
  */
-class Transform
+abstract class Transform
 {
     /**
      * 需要使用关联的声明
      * @var array
      */
     protected $modelName = [];
+
+    protected $modelTransForm = [];
 
     /**
      * 时间格式
@@ -41,6 +43,14 @@ class Transform
     }
 
     /**
+     * @return array
+     */
+    public function getModelTransForm(): array
+    {
+        return $this->modelTransForm;
+    }
+
+    /**
      * 通过容器替代Response
      * @return \Illuminate\Contracts\Foundation\Application|mixed
      * @author: chenyansong
@@ -50,6 +60,8 @@ class Transform
     {
         return app(Response::class);
     }
+
+    abstract function handle(Model $model);
 
     /**
      * 读取response中的基类
@@ -62,10 +74,10 @@ class Transform
      */
     public function __call($name, $arguments)
     {
-       if (method_exists($this->getResponse(), $name) || $name == 'array'){
-           return call_user_func_array([$this->getResponse(), $name], $arguments);
-       }
+        if (method_exists($this->getResponse(), $name) || $name == 'array'){
+            return call_user_func_array([$this->getResponse(), $name], $arguments);
+        }
 
-       throw new Exception('找不到这个方法');
+        throw new Exception('找不到这个方法');
     }
 }

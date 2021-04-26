@@ -24,16 +24,17 @@ class Response extends HttpResponse
      */
     protected $key = 'install';
 
-    protected $namespace = 'App\Transformation';
-
-    protected $class = 'Transform';
-
+    public function __construct($content = '', $status = 200, array $headers = [])
+    {
+        parent::__construct($content, $status, $headers);
+        $this->key = config('wdnmd.query_key');
+    }
 
     /**
      * 数组方式
-     * @author yansong
      * @param array $arr
      * @return Response
+     * @author yansong
      */
     public function array(array $arr): Response
     {
@@ -67,6 +68,28 @@ class Response extends HttpResponse
         }
     }
 
+    protected function existHasFunc($data): array
+    {
+        $install = Request::only([$this->key]);
+        $install[$this->key] = $install[$this->key] ?? '';
+        $installArr = explode(',', $install[$this->key]);
+        $load_arr = [];
+        foreach ($installArr as $v) {
+            $load_str = "";
+            $installChildArr = explode('.', $v);
+            if (!method_exists($data[0], $this->getHasName($installChildArr[0]))) {
+                break;
+            }
+            foreach ($installChildArr as $va) {
+                $load_str .= $this->getHasName($va) . ".";
+            }
+            if (!empty($load_str)) {
+                array_push($load_arr, trim($load_str, "."));
+            }
+        }
+        return $load_arr;
+    }
+
     /**
      * 转换
      * @param $data
@@ -80,8 +103,14 @@ class Response extends HttpResponse
      */
     public function items($data, $transform, $code = 200, $is_type = false)
     {
+        $install = Request::only([$this->key]);
+        $install[$this->key] = $install[$this->key] ?? '';
+        $installArr = explode(',', $install[$this->key]);
         if ($data instanceof Collection) {
             $transformData = [];
+            $load_arr = $this->existHasFunc($data);
+
+            $data->load($load_arr);
             foreach ($data->toArray() as $k => $v) {
                 $arr = $this->items($data[$k], $transform, $code, $is_type);
                 if (method_exists($arr, 'getData')) {
@@ -93,6 +122,8 @@ class Response extends HttpResponse
             return $transformData;
         } else if ($data instanceof LengthAwarePaginator) {
             $transformData = [];
+            $load_arr = $this->existHasFunc($data);
+            $data->load($load_arr);
             foreach ($data->toArray()['data'] as $k => $v) {
                 $arr = $this->items($data[$k], $transform, $code, $is_type);
                 if (is_array($arr)) {
@@ -116,11 +147,9 @@ class Response extends HttpResponse
                 return $transformData;
             }
 
-            $install = Request::only([$this->key]);
-            $install[$this->key] = $install[$this->key] ?? '';
-            $installArr = explode(',', $install[$this->key]);
+
             foreach ($installArr as $v) {
-                if (strpos($v, '.') && method_exists($data, explode('.', $v)[0])) {
+                if (strpos($v, '.') && method_exists($data, $this->getHasName(explode('.', $v)[0]))) {
                     $installChild = explode('.', $v);
                     $transformData['mate'] = $this->installChild($installChild, $data, $transform);
                 } else {
@@ -133,27 +162,24 @@ class Response extends HttpResponse
 
     /**
      * 二级到N级关联
-     * @author yansong
      * @param array $arr
      * @param $data
      * @param $transform
      * @return array
      * @throws Exception
      * @throws \ReflectionException
+     * @author yansong
      */
     protected function installChild(array $arr, $data, $transform): array
     {
-        if (!method_exists($data, 'getName')) {
-            return [];
-        }
-
         $new_data = [];
         $model = $transform->getModelName();
         for ($i = 0; $i < count($arr); $i++) {
-            $str = $arr[$i];
+            $str = $this->getHasName($arr[$i]);
             if ($transform instanceof Transform) {
                 if (method_exists($transform, $this->key . Str::title($arr[$i]))) {
                     if (!($data instanceof Collection)) {
+
                         $child_transform_data = call_user_func_array([$transform, $this->key . Str::title($arr[$i])], [$data]);
                     } else {
                         break;
@@ -167,27 +193,31 @@ class Response extends HttpResponse
                         $child_transform_data = json_decode($child_transform_data, true);
                     }
 
-                    $new_data[$arr[$i]] = $child_transform_data;
-
+                    $new_data[$arr[$i]] = $child_transform_data['data'] ?? [];
                     if (count($child_transform_data) > 0) {
-                        $a = new \ReflectionClass($this->namespace . '\\' . Str::title($arr[$i]) . $this->class);
+                        $child_transform = $transform->getModelTransForm();
+                        if (isset($child_transform[$arr[$i]])) {
+                            $transformation = new \ReflectionClass($child_transform[$arr[$i]]);
+                        } else {
+                            break;
+                        }
                         if ($data instanceof Collection) {
-                            $transform = $a->newInstance();
+                            $transform = $transformation->newInstance();
                             $datap = $data;
                             $collections = [];
                             foreach ($datap->toArray() as $ke => $va) {
-                                $sss = $datap[$ke]->$str;
-                                $dd = $this->items($sss, $transform, 200, true);
-                                if (method_exists($dd, 'getContent')) {
-                                    $collections[$ke] = $dd->getContent();
+                                $child_data = $datap[$ke]->$str;
+                                $child = $this->items($child_data, $transform, 200, true);
+                                if (method_exists($child, 'getContent')) {
+                                    $collections[$ke] = $child->getContent();
                                 } else {
-                                    $collections[$ke] = $dd;
+                                    $collections[$ke] = $child;
                                 }
                             }
                             $new_data[$arr[$i]] = $collections;
                         } else {
                             $data = $data->$str;
-                            $transform = $a->newInstance();
+                            $transform = $transformation->newInstance();
                         }
                     }
                 }
@@ -198,23 +228,32 @@ class Response extends HttpResponse
         return $new_data;
     }
 
+    protected function modelHas($data, $item): bool
+    {
+        if (empty($data[$item])) {
+            return true;
+        }
+    }
+
+    protected function getHasName($item): string
+    {
+        $item = Str::title($item);
+        return "get" . str_replace("_", "", $item);
+    }
+
     /**
      * 一级关联
-     * @author yansong
      * @param $item
      * @param array $model
      * @param $transform
      * @param $data
      * @param $transformData
      * @return mixed
+     * @author yansong
      */
     protected function install($item, array $model, $transform, $data, $transformData)
     {
         if (in_array($item, $model)) {
-            if (empty($data[$item]->count())) {
-//                Str::title("get");
-                $data->load($item);
-            }
             $mate = call_user_func_array([$transform, $this->key . Str::title($item)], [$data]);
 
             if (method_exists($mate, 'getContent')) {
@@ -227,7 +266,7 @@ class Response extends HttpResponse
                 if (is_string($mate)) {
                     $mate = json_decode($mate);
                 }
-                $transformData['mate'][$item] = $mate;
+                $transformData['mate'][$item] = $mate->data ?? [];
             }
         }
         return $transformData;
@@ -235,13 +274,13 @@ class Response extends HttpResponse
 
     /**
      * 分页转换
-     * @author yansong
      * @param $data
      * @param $transform
      * @param int $code
      * @return Response
      * @throws Exception
      * @throws \ReflectionException
+     * @author yansong
      */
     public function paginate($data, $transform, $code = 200): Response
     {
@@ -273,14 +312,14 @@ class Response extends HttpResponse
 
     /**
      * 设置自定义参数
-     * @author yansong
      * @param array $arr
      * @return Response
+     * @author yansong
      */
     public function setMate(array $arr): Response
     {
         $data = $this->getContent();
-        $data = (array) json_decode($data, true);
+        $data = (array)json_decode($data, true);
         if (!empty($data['mate'])) {
             foreach ($arr as $k => $v) {
                 $data['mate'][$k] = $v;
