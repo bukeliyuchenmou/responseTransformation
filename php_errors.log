@@ -1,0 +1,12 @@
+[27-Apr-2021 00:35:38 Asia/Shanghai] PHP Fatal error:  Uncaught Error: Class 'Wdnmd\src\Response' not found in /Users/chenyansong/Public/theProletariat/php/responseTransformation/index.php:5
+Stack trace:
+#0 {main}
+  thrown in /Users/chenyansong/Public/theProletariat/php/responseTransformation/index.php on line 5
+[27-Apr-2021 00:36:45 Asia/Shanghai] PHP Fatal error:  Uncaught Error: Class 'Wdnmd\src\Response' not found in /Users/chenyansong/Public/theProletariat/php/responseTransformation/index.php:5
+Stack trace:
+#0 {main}
+  thrown in /Users/chenyansong/Public/theProletariat/php/responseTransformation/index.php on line 5
+[27-Apr-2021 00:37:34 Asia/Shanghai] PHP Fatal error:  Uncaught Error: Class 'Wdnmd\src\Response' not found in /Users/chenyansong/Public/theProletariat/php/responseTransformation/index.php:5
+Stack trace:
+#0 {main}
+  thrown in /Users/chenyansong/Public/theProletariat/php/responseTransformation/index.php on line 5
