@@ -2,7 +2,7 @@
 
 namespace Wdnmd\traits;
 
-use Wdnmd\src\Response;
+use Wdnmd\Response;
 use Exception;
 
 /**
