@@ -2,6 +2,9 @@
 Conversion response of user defined model based on laravel   
 基于laravel的自定义模型转换响应
 
+## 备注
+有点像dingo-api的转换层
+
 ## 开始
 发布配置文件
 ```shell

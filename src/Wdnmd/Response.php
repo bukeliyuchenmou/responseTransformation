@@ -6,10 +6,14 @@ namespace Wdnmd;
 
 use Illuminate\Http\Response as HttpResponse;
 use Exception;
+use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Request;
+use Wdnmd\Services\CollectionService;
+use Wdnmd\Services\ElseService;
+use Wdnmd\Services\PaginatorService;
 
 /**
  * 响应基类
@@ -23,6 +27,12 @@ class Response extends HttpResponse
      * @var string
      */
     protected $key = 'install';
+
+    protected $servers = [
+        Collection::class => CollectionService::class,
+        AbstractPaginator::class => PaginatorService::class,
+        ElseService::class => ElseService::class
+    ];
 
     public function __construct($content = '', $status = 200, array $headers = [])
     {
@@ -54,7 +64,7 @@ class Response extends HttpResponse
      * @author: chenyansong
      * @Time: 2021/4/26 23:37
      */
-    public function item($data, $transform, $code = 200, $is_type = false): Response
+    public function item($data, $transform, int $code = 200, bool $is_type = false): Response
     {
         $res = $this->items($data, $transform, $code, $is_type);
         if ($res instanceof HttpResponse) {
@@ -101,63 +111,64 @@ class Response extends HttpResponse
      * @author: chenyansong
      * @Time: 2021/4/26 23:37
      */
-    public function items($data, $transform, $code = 200, $is_type = false)
+    public function items($data, $transform, int $code = 200, bool $is_type = false)
     {
         $install = Request::only([$this->key]);
         $install[$this->key] = $install[$this->key] ?? '';
         $installArr = explode(',', $install[$this->key]);
-        if ($data instanceof Collection) {
-            $transformData = [];
-            $load_arr = $this->existHasFunc($data);
 
-            $data->load($load_arr);
-            foreach ($data->toArray() as $k => $v) {
-                $arr = $this->items($data[$k], $transform, $code, $is_type);
-                if (method_exists($arr, 'getData')) {
-                    $transformData[$k] = $arr->getData();
-                } else {
-                    $transformData[$k] = $arr;
-                }
-            }
-            return $transformData;
-        } else if ($data instanceof LengthAwarePaginator) {
-            $transformData = [];
-            $load_arr = $this->existHasFunc($data);
-            $data->load($load_arr);
-            foreach ($data->toArray()['data'] as $k => $v) {
-                $arr = $this->items($data[$k], $transform, $code, $is_type);
-                if (is_array($arr)) {
-                    $transformData[$k] = $arr;
-                } else {
-                    if (is_string($arr->getContent())) {
-                        $transformData[$k] = json_decode($arr->getContent());
-                    } else {
-                        $transformData[$k] = $arr->getContent();
-                    }
-                }
-            }
-            return $transformData;
-        } else {
-            if (is_null($data)) {
-                return response([], $code);
-            }
-            $transformData = call_user_func_array([$transform, 'handle'], [$data]);
-            $model = $transform->getModelName();
-            if (count($model) <= 0) {
-                return $transformData;
-            }
-
-
-            foreach ($installArr as $v) {
-                if (strpos($v, '.') && method_exists($data, $this->getHasName(explode('.', $v)[0]))) {
-                    $installChild = explode('.', $v);
-                    $transformData['mate'] = $this->installChild($installChild, $data, $transform);
-                } else {
-                    $transformData = $this->install($v, $model, $transform, $data, $transformData);
-                }
-            }
-            return $transformData;
-        }
+//        if ($data instanceof Collection) {
+//            $transformData = [];
+//            $load_arr = $this->existHasFunc($data);
+//
+//            $data->load($load_arr);
+//            foreach ($data->toArray() as $k => $v) {
+//                $arr = $this->items($data[$k], $transform, $code, $is_type);
+//                if (method_exists($arr, 'getData')) {
+//                    $transformData[$k] = $arr->getData();
+//                } else {
+//                    $transformData[$k] = $arr;
+//                }
+//            }
+//            return $transformData;
+//        } else if ($data instanceof AbstractPaginator) {
+//            $transformData = [];
+//            $load_arr = $this->existHasFunc($data);
+//            $data->load($load_arr);
+//            foreach ($data->toArray()['data'] as $k => $v) {
+//                $arr = $this->items($data[$k], $transform, $code, $is_type);
+//                if (is_array($arr)) {
+//                    $transformData[$k] = $arr;
+//                } else {
+//                    if (is_string($arr->getContent())) {
+//                        $transformData[$k] = json_decode($arr->getContent());
+//                    } else {
+//                        $transformData[$k] = $arr->getContent();
+//                    }
+//                }
+//            }
+//            return $transformData;
+//        } else {
+//            if (is_null($data)) {
+//                return response([], $code);
+//            }
+//            $transformData = call_user_func_array([$transform, 'handle'], [$data]);
+//            $model = $transform->getModelName();
+//            if (count($model) <= 0) {
+//                return $transformData;
+//            }
+//
+//
+//            foreach ($installArr as $v) {
+//                if (strpos($v, '.') && method_exists($data, $this->getHasName(explode('.', $v)[0]))) {
+//                    $installChild = explode('.', $v);
+//                    $transformData['mate'] = $this->installChild($installChild, $data, $transform);
+//                } else {
+//                    $transformData = $this->install($v, $model, $transform, $data, $transformData);
+//                }
+//            }
+//            return $transformData;
+//        }
     }
 
     /**
@@ -179,7 +190,6 @@ class Response extends HttpResponse
             if ($transform instanceof Transform) {
                 if (method_exists($transform, $this->key . Str::title($arr[$i]))) {
                     if (!($data instanceof Collection)) {
-
                         $child_transform_data = call_user_func_array([$transform, $this->key . Str::title($arr[$i])], [$data]);
                     } else {
                         break;
@@ -233,6 +243,7 @@ class Response extends HttpResponse
         if (empty($data[$item])) {
             return true;
         }
+        return false;
     }
 
     protected function getHasName($item): string
@@ -305,7 +316,7 @@ class Response extends HttpResponse
      * @author: chenyansong
      * @Time: 2021/4/26 23:34
      */
-    public function collection($item, $code = 200)
+    public function collection($item, int $code = 200)
     {
         return response($item, $code);
     }
@@ -330,5 +341,22 @@ class Response extends HttpResponse
 
         $data = json_encode($data);
         return $this->setContent($data);
+    }
+
+    private function getService($item)
+    {
+        foreach ($this->servers as $k => $v) {
+            if ($item instanceof $k) {
+
+                return $v;
+            }
+        }
+    }
+
+    private function emptyObject($v)
+    {
+        if (is_object($v)) {
+            dd($v);
+        }
     }
 }
