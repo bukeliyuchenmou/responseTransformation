@@ -1,10 +1,13 @@
 <?php
 
 
-namespace Wdnmd\Services;
+namespace Wdnmd\services;
 
 
-class PaginatorService
+class PaginatorService extends AbstractService
 {
-
+    public function handle($data, $transform, int $code = 200, bool $is_type = false)
+    {
+        // TODO: Implement handle() method.
+    }
 }
